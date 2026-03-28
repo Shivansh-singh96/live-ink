@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "781931934976",
+    "project_id": "live-ink-7ad12",
+    "storage_bucket": "live-ink-7ad12.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:781931934976:android:4c5f8878fc5e8fb664afe5",
+        "android_client_info": {
+          "package_name": "com.example.live_ink"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_RM7yK-PLhaspy0AmEbb30xN7ADc0jFg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

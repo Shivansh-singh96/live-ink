@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  INSTRUCTIONS:
+  Copy the <uses-permission> lines into your existing
+  android/app/src/main/AndroidManifest.xml
+  inside the <manifest> tag, BEFORE the <application> tag.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ADD THESE TWO LINES -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+
+    <!-- Your existing <application> tag continues below... -->
+
+</manifest>

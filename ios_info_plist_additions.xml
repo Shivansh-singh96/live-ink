@@ -1,0 +1,10 @@
+<!--
+  INSTRUCTIONS:
+  Copy these lines into your existing ios/Runner/Info.plist
+  inside the <dict> tag.
+-->
+
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>LiveInk saves your drawings to your photo library.</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>LiveInk needs access to save drawings.</string>
