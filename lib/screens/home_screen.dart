@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../controllers/drawing_controller.dart';
 import '../services/export_service.dart';
@@ -21,24 +22,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final FirebaseService _firebaseService = FirebaseService();
   String? _lastMessageId;
+  StreamSubscription? _subscription;
+
+  // 🔥 IMPORTANT: track app start time
+  final int _appStartTime =
+      DateTime.now().millisecondsSinceEpoch;
 
   @override
   void initState() {
     super.initState();
     _controller = DrawingController();
 
-    _firebaseService.listenToMessages().listen((snapshot) {
+    _subscription =
+        _firebaseService.listenToMessages().listen((snapshot) {
       if (snapshot.docs.isEmpty) return;
 
       final doc = snapshot.docs.first;
+      final data = doc.data() as Map<String, dynamic>;
 
+      // ❌ Ignore old messages
+      if (data['timestamp'] < _appStartTime) return;
+
+      // ❌ Ignore duplicate
       if (_lastMessageId == doc.id) return;
       _lastMessageId = doc.id;
 
-      final data = doc.data() as Map<String, dynamic>;
+      // ❌ Ignore own message
+      if (data['sender'] == _firebaseService.deviceId) return;
 
       if (data['type'] == 'popup') {
-        // IMPORTANT: delay to avoid context issues
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           _showPopup(data['message']);
@@ -49,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _subscription?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -68,7 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _showSnackBar('✅ Drawing saved to Documents',
             color: Colors.green);
         break;
-
       case ExportStatus.failure:
         _showSnackBar('❌ Save failed: ${result.errorMessage}',
             color: Colors.red);
@@ -104,16 +116,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
- 
   void _showPopup(String message) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext ctx) => AlertDialog(
         title: const Text('📩 New Message'),
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('OK'),
           ),
         ],
@@ -128,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
         controller: _controller,
         onSave: _handleSave,
         onShare: _handleShare,
+        firebaseService: _firebaseService,
       ),
       body: Stack(
         children: [
@@ -147,8 +159,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ColoredBox(
                 color: Color(0x66000000),
                 child: Center(
-                  child:
-                      CircularProgressIndicator(color: Colors.white),
+                  child: CircularProgressIndicator(
+                      color: Colors.white),
                 ),
               ),
             ),

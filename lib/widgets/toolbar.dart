@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import '../controllers/drawing_controller.dart';
+import '../services/firebase_service.dart';
 
 class DrawingToolbar extends StatelessWidget implements PreferredSizeWidget {
   final DrawingController controller;
   final VoidCallback onSave;
   final VoidCallback onShare;
+  final FirebaseService firebaseService;
 
   const DrawingToolbar({
     super.key,
     required this.controller,
     required this.onSave,
     required this.onShare,
+    required this.firebaseService,
   });
 
   @override
@@ -33,6 +36,12 @@ class DrawingToolbar extends StatelessWidget implements PreferredSizeWidget {
               icon: const Icon(Icons.undo_rounded),
               tooltip: 'Undo',
               onPressed: controller.strokes.isEmpty ? null : controller.undo,
+            ),
+            IconButton(
+              icon: Icon(Icons.send),
+              onPressed: () {
+                firebaseService.sendMessage("Hello from Device 🚀");
+              },
             ),
             IconButton(
               icon: Icon(
