@@ -38,9 +38,10 @@ class DrawingToolbar extends StatelessWidget implements PreferredSizeWidget {
               onPressed: controller.strokes.isEmpty ? null : controller.undo,
             ),
             IconButton(
-              icon: Icon(Icons.send),
+              icon: const Icon(Icons.send),
+              tooltip: 'Send Message',
               onPressed: () {
-                firebaseService.sendMessage("Hello from Device 🚀");
+                _showSendDialog(context);
               },
             ),
             IconButton(
@@ -75,6 +76,42 @@ class DrawingToolbar extends StatelessWidget implements PreferredSizeWidget {
           ],
         );
       },
+    );
+  }
+
+  // Custom message 
+  void _showSendDialog(BuildContext context) {
+    final TextEditingController controllerText = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Send Message'),
+        content: TextField(
+          controller: controllerText,
+          decoration: const InputDecoration(
+            hintText: 'Type your message...',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final text = controllerText.text.trim();
+
+              if (text.isNotEmpty) {
+                firebaseService.sendMessage(text);
+              }
+
+              Navigator.pop(context);
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      ),
     );
   }
 
