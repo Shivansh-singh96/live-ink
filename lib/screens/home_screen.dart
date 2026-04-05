@@ -21,12 +21,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isExporting = false;
 
   final FirebaseService _firebaseService = FirebaseService();
+
   String? _lastMessageId;
   StreamSubscription? _subscription;
 
-  // 🔥 IMPORTANT: track app start time
-  final int _appStartTime =
-      DateTime.now().millisecondsSinceEpoch;
+  // 🔥 IMPORTANT: used to ignore old messages
+  final int _appStartTime = DateTime.now().millisecondsSinceEpoch;
 
   @override
   void initState() {
@@ -40,20 +40,36 @@ class _HomeScreenState extends State<HomeScreen> {
       final doc = snapshot.docs.first;
       final data = doc.data() as Map<String, dynamic>;
 
-      // ❌ Ignore old messages
-      if (data['timestamp'] < _appStartTime) return;
+      // ✅ 1. Ignore old messages (MAIN FIX)
+      if ((data['timestamp'] ?? 0) < _appStartTime) return;
 
-      // ❌ Ignore duplicate
+      // ✅ 2. Ignore duplicate message
       if (_lastMessageId == doc.id) return;
       _lastMessageId = doc.id;
 
-      // ❌ Ignore own message
+      // ✅ 3. Ignore self message
       if (data['sender'] == _firebaseService.deviceId) return;
 
+      // ✅ 4. Show popup
       if (data['type'] == 'popup') {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          _showPopup(data['message']);
+        if (!mounted) return;
+
+        Future.delayed(Duration.zero, (){
+          if (!mounted) return; 
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Text('📩 New Message'),
+              content: Text(data['message'] ?? ''),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
         });
       }
     });
@@ -81,6 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _showSnackBar('✅ Drawing saved to Documents',
             color: Colors.green);
         break;
+
       case ExportStatus.failure:
         _showSnackBar('❌ Save failed: ${result.errorMessage}',
             color: Colors.red);
@@ -116,22 +133,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showPopup(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('📩 New Message'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,8 +160,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ColoredBox(
                 color: Color(0x66000000),
                 child: Center(
-                  child: CircularProgressIndicator(
-                      color: Colors.white),
+                  child:
+                      CircularProgressIndicator(color: Colors.white),
                 ),
               ),
             ),
