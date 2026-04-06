@@ -25,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _lastMessageId;
   StreamSubscription? _subscription;
 
-  // 🔥 IMPORTANT: used to ignore old messages
   final int _appStartTime = DateTime.now().millisecondsSinceEpoch;
 
   @override
@@ -33,29 +32,47 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _controller = DrawingController();
 
-    _subscription =
-        _firebaseService.listenToMessages().listen((snapshot) {
+    _setup(); // ✅ correct flow
+  }
+
+  // ✅ Proper async setup
+  Future<void> _setup() async {
+    await _firebaseService.init();
+
+    if (!mounted) return;
+
+    if (_firebaseService.pairId == null) {
+      _askPairId();
+      return; // wait until user enters
+    }
+
+    _startListening();
+  }
+
+  // ✅ Start Firestore listener
+  void _startListening() {
+    final stream = _firebaseService.listenToMessages();
+    if (stream == null) return;
+
+    _subscription = stream.listen((snapshot) {
       if (snapshot.docs.isEmpty) return;
 
       final doc = snapshot.docs.first;
       final data = doc.data() as Map<String, dynamic>;
 
-      // ✅ 1. Ignore old messages (MAIN FIX)
       if ((data['timestamp'] ?? 0) < _appStartTime) return;
 
-      // ✅ 2. Ignore duplicate message
       if (_lastMessageId == doc.id) return;
       _lastMessageId = doc.id;
 
-      // ✅ 3. Ignore self message
       if (data['sender'] == _firebaseService.deviceId) return;
 
-      // ✅ 4. Show popup
       if (data['type'] == 'popup') {
         if (!mounted) return;
 
-        Future.delayed(Duration.zero, (){
-          if (!mounted) return; 
+        Future.delayed(Duration.zero, () {
+          if (!mounted) return;
+
           showDialog(
             context: context,
             barrierDismissible: false,
@@ -73,6 +90,37 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     });
+  }
+
+  // ✅ Ask for Pair ID
+  void _askPairId() {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text("Enter Pair Code"),
+        content: TextField(controller: controller),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              final id = controller.text.trim();
+
+              if (id.isEmpty) return;
+
+              await _firebaseService.setPairId(id);
+
+              if (!mounted) return;
+              Navigator.pop(context);
+
+              _startListening(); // ✅ start AFTER setting
+            },
+            child: const Text("Connect"),
+          )
+        ],
+      ),
+    );
   }
 
   @override
