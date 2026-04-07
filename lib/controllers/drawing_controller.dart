@@ -4,17 +4,26 @@ import 'dart:math';
 
 class DrawingController extends ChangeNotifier {
   final List<Stroke> _strokes = [];
+  final Set<String> _strokeIds = {}; // ✅ prevent duplicates
+
   List<Offset> _currentPoints = [];
+
   Color _selectedColor = Colors.black;
   double _strokeWidth = 4.0;
   bool _isEraser = false;
 
+  // ========================
+  // GETTERS
+  // ========================
   List<Stroke> get strokes => List.unmodifiable(_strokes);
   List<Offset> get currentPoints => List.unmodifiable(_currentPoints);
   Color get selectedColor => _selectedColor;
   double get strokeWidth => _strokeWidth;
   bool get isEraser => _isEraser;
 
+  // ========================
+  // DRAWING
+  // ========================
   void startStroke(Offset point) {
     _currentPoints = [point];
     notifyListeners();
@@ -27,30 +36,63 @@ class DrawingController extends ChangeNotifier {
 
   void endStroke() {
     if (_currentPoints.isEmpty) return;
-    _strokes.add(Stroke(
+
+    final stroke = Stroke(
       id: _generateId(),
       points: List.from(_currentPoints),
-      color: _selectedColor,
+      color: _isEraser ? Colors.white : _selectedColor, // ✅ eraser fix
       strokeWidth: _strokeWidth,
       isEraser: _isEraser,
-    ));
+    );
+
+    _strokes.add(stroke);
+    _strokeIds.add(stroke.id);
+
     _currentPoints = [];
     notifyListeners();
   }
 
+  // ========================
+  // REMOTE STROKES
+  // ========================
+  void addRemoteStroke(Stroke stroke) {
+    if (stroke.points.isEmpty) return;
+
+    // ✅ prevent duplicate strokes
+    if (_strokeIds.contains(stroke.id)) return;
+
+    _strokes.add(stroke);
+    _strokeIds.add(stroke.id);
+
+    notifyListeners();
+  }
+
+  // ========================
+  // UNDO
+  // ========================
   void undo() {
-    if (_strokes.isNotEmpty) {
-      _strokes.removeLast();
-      notifyListeners();
-    }
-  }
+    if (_strokes.isEmpty) return;
 
-  void clear() {
-    _strokes.clear();
-    _currentPoints = [];
+    final removed = _strokes.removeLast();
+    _strokeIds.remove(removed.id);
+
     notifyListeners();
   }
 
+  // ========================
+  // CLEAR
+  // ========================
+  void clearCanvas() {
+    _strokes.clear();
+    _strokeIds.clear();
+    _currentPoints = [];
+
+    notifyListeners();
+  }
+
+  // ========================
+  // TOOLS
+  // ========================
   void setColor(Color color) {
     _selectedColor = color;
     _isEraser = false;
@@ -67,11 +109,9 @@ class DrawingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addRemoteStroke(Stroke stroke) {
-    _strokes.add(stroke);
-    notifyListeners();
-  }
-
+  // ========================
+  // ID GENERATOR
+  // ========================
   String _generateId() {
     return DateTime.now().millisecondsSinceEpoch.toString() +
         Random().nextInt(9999).toString();

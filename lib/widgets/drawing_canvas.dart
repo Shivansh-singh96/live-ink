@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
 import '../controllers/drawing_controller.dart';
 import '../models/stroke.dart';
+import '../services/firebase_service.dart';
 
 class DrawingCanvas extends StatelessWidget {
   final DrawingController controller;
   final GlobalKey repaintKey;
+  final FirebaseService firebaseService;
 
   const DrawingCanvas({
     super.key,
     required this.controller,
     required this.repaintKey,
+    required this.firebaseService,
   });
+
+  // ✅ Offset → Map
+  Map<String, double> offsetToMap(Offset o) {
+    return {'dx': o.dx, 'dy': o.dy};
+  }
+
+  Offset _getLocalPosition(BuildContext context, Offset globalPosition) {
+    final RenderBox box = context.findRenderObject() as RenderBox;
+    return box.globalToLocal(globalPosition);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,18 +33,41 @@ class DrawingCanvas extends StatelessWidget {
         color: Colors.white,
         child: GestureDetector(
           onPanStart: (details) {
-            final RenderBox box =
-                context.findRenderObject() as RenderBox;
             controller.startStroke(
-                box.globalToLocal(details.globalPosition));
+              _getLocalPosition(context, details.globalPosition),
+            );
           },
+
           onPanUpdate: (details) {
-            final RenderBox box =
-                context.findRenderObject() as RenderBox;
             controller.updateStroke(
-                box.globalToLocal(details.globalPosition));
+              _getLocalPosition(context, details.globalPosition),
+            );
           },
-          onPanEnd: (_) => controller.endStroke(),
+
+          // 🔥 FIXED: correct order
+          onPanEnd: (_) async {
+            // ✅ FIRST finalize stroke
+            controller.endStroke();
+
+            // ✅ THEN get latest stroke
+            final stroke = controller.strokes.isNotEmpty
+                ? controller.strokes.last
+                : null;
+
+            if (stroke == null || stroke.points.isEmpty) return;
+
+            final strokePoints =
+                stroke.points.map(offsetToMap).toList();
+
+            await firebaseService.sendStroke(
+              strokePoints,
+              stroke.color.value,
+              stroke.strokeWidth,
+            );
+
+            print("🔥 STROKE SENT: ${stroke.points.length}");
+          },
+
           child: ListenableBuilder(
             listenable: controller,
             builder: (context, _) {
@@ -75,21 +111,38 @@ class DrawingPainter extends CustomPainter {
       Paint(),
     );
 
+    // ✅ Draw completed strokes
     for (final stroke in strokes) {
-      _drawStroke(canvas, stroke.points, stroke.color,
-          stroke.strokeWidth, stroke.isEraser);
+      _drawStroke(
+        canvas,
+        stroke.points,
+        stroke.color,
+        stroke.strokeWidth,
+        stroke.isEraser,
+      );
     }
 
+    // ✅ Draw current stroke (live drawing)
     if (currentPoints.isNotEmpty) {
       _drawStroke(
-          canvas, currentPoints, currentColor, currentWidth, isEraser);
+        canvas,
+        currentPoints,
+        currentColor,
+        currentWidth,
+        isEraser,
+      );
     }
 
     canvas.restore();
   }
 
-  void _drawStroke(Canvas canvas, List<Offset> points, Color color,
-      double width, bool eraser) {
+  void _drawStroke(
+    Canvas canvas,
+    List<Offset> points,
+    Color color,
+    double width,
+    bool eraser,
+  ) {
     if (points.length < 2) return;
 
     final Paint paint = Paint()
@@ -98,13 +151,15 @@ class DrawingPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..strokeWidth = width
       ..style = PaintingStyle.stroke
-      ..blendMode = eraser ? BlendMode.clear : BlendMode.srcOver;
+      ..blendMode =
+          eraser ? BlendMode.clear : BlendMode.srcOver;
 
-    final Path path = Path();
-    path.moveTo(points.first.dx, points.first.dy);
+    final Path path = Path()..moveTo(points.first.dx, points.first.dy);
+
     for (int i = 1; i < points.length; i++) {
       path.lineTo(points[i].dx, points[i].dy);
     }
+
     canvas.drawPath(path, paint);
   }
 

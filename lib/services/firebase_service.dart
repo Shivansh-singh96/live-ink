@@ -7,7 +7,6 @@ class FirebaseService {
   String? pairId;
   String? deviceId;
 
-  // ✅ INIT (must be awaited before use)
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -20,14 +19,12 @@ class FirebaseService {
     }
   }
 
-  // ✅ Save pair ID
   Future<void> setPairId(String id) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('pairId', id);
     pairId = id;
   }
 
-  // ✅ SAFE stream (no crash)
   Stream<QuerySnapshot>? listenToMessages() {
     if (pairId == null) return null;
 
@@ -35,12 +32,10 @@ class FirebaseService {
         .collection('pairs')
         .doc(pairId)
         .collection('messages')
-        .orderBy('timestamp', descending: true)
-        .limit(1)
+        .orderBy('timestamp')
         .snapshots();
   }
 
-  // ✅ Send message
   Future<void> sendMessage(String message) async {
     if (pairId == null) return;
 
@@ -51,6 +46,43 @@ class FirebaseService {
         .add({
       'type': 'popup',
       'message': message,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'sender': deviceId,
+    });
+  }
+
+  Future<void> sendStroke(
+    List<Map<String, double>> points,
+    int color,
+    double width,
+  ) async {
+    if (pairId == null || points.isEmpty) return;
+
+    await _firestore
+        .collection('pairs')
+        .doc(pairId)
+        .collection('messages')
+        .add({
+      'type': 'stroke',
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'points': points,
+      'color': color,
+      'width': width,
+      'isEraser': false,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'sender': deviceId,
+    });
+  }
+
+  Future<void> sendClearCanvas() async {
+    if (pairId == null) return;
+
+    await _firestore
+        .collection('pairs')
+        .doc(pairId)
+        .collection('messages')
+        .add({
+      'type': 'clear',
       'timestamp': DateTime.now().millisecondsSinceEpoch,
       'sender': deviceId,
     });
