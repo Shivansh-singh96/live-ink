@@ -7,6 +7,7 @@ import '../widgets/color_palette.dart';
 import '../widgets/drawing_canvas.dart';
 import '../widgets/toolbar.dart';
 import '../services/firebase_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final FirebaseService _firebaseService = FirebaseService();
 
-  StreamSubscription? _subscription;
+  StreamSubscription<QuerySnapshot>? _subscription;
 
   final int _appStartTime = DateTime.now().millisecondsSinceEpoch;
 
@@ -207,16 +208,26 @@ class _BottomControls extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ColorPalette(
-          selectedColor: controller.selectedColor,
-          onColorSelected: controller.setColor,
-        ),
-        Slider(
-          value: controller.strokeWidth,
-          min: 1,
-          max: 30,
-          onChanged: controller.setStrokeWidth,
-        ),
+  ListenableBuilder(
+    listenable: controller,
+    builder: (_, __) {
+      return ColorPalette(
+        selectedColor: controller.selectedColor,
+        onColorSelected: controller.setColor,
+      );
+    },
+  ),
+  ListenableBuilder(
+    listenable: controller,
+      builder: (_, __) {
+      return Slider(
+        value: controller.strokeWidth,
+        min: 1,
+        max: 30,
+        onChanged: controller.setStrokeWidth,
+      );
+    },
+  ),
       ],
     );
   }

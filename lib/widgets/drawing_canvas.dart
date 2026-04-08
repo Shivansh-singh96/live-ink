@@ -44,17 +44,18 @@ class DrawingCanvas extends StatelessWidget {
             );
           },
 
-          // 🔥 FIXED: correct order
+          // 
           onPanEnd: (_) async {
-            // ✅ FIRST finalize stroke
+           
             controller.endStroke();
 
-            // ✅ THEN get latest stroke
+            
             final stroke = controller.strokes.isNotEmpty
                 ? controller.strokes.last
                 : null;
 
             if (stroke == null || stroke.points.isEmpty) return;
+            if (stroke.points.length < 2) return;
 
             final strokePoints =
                 stroke.points.map(offsetToMap).toList();

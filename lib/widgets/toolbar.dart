@@ -74,13 +74,16 @@ class DrawingToolbar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   void _send(BuildContext context) {
-    final c = TextEditingController();
+    final textController = TextEditingController(); // ✅ NEW instance
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Send Message'),
-        content: TextField(controller: c),
+        content: TextField(
+          controller: textController,
+          autofocus: true,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -88,11 +91,13 @@ class DrawingToolbar extends StatelessWidget implements PreferredSizeWidget {
           ),
           TextButton(
             onPressed: () {
-              final text = c.text.trim();
-              if (text.isNotEmpty) {
-                firebaseService.sendMessage(text);
-              }
-              Navigator.pop(context);
+              final text = textController.text.trim();
+
+              if (text.isEmpty) return;
+
+              firebaseService.sendMessage(text);
+
+              Navigator.pop(context); // ✅ close dialog
             },
             child: const Text('Send'),
           ),
